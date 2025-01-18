@@ -62,7 +62,7 @@ class MLP(nn.Module):
     def __init__(self, config: SmolLMConfig):
         super().__init__()
         self.c_fc    = nn.Linear(config.n_embed, config.mlp_hidden_dim)
-        self.silu    = nn.SilU()
+        self.silu    = nn.SiLU()
         self.c_proj  = nn.Linear(config.mlp_hidden_dim, config.n_embed)
         self.c_proj.NANOGPT_SCALE_INIT = 1
 
@@ -85,7 +85,7 @@ class DecoderBlockWithRMSNorm(nn.Module):
         x = x + self.mlp(self.rms_2(x))
         return x
 
-class DecodeBlockWithLayerNorm(nn.Module):
+class DecoderBlockWithLayerNorm(nn.Module):
     def __init__(self, config: SmolLMConfig):
         super().__init__()
         self.ln_1 = nn.LayerNorm(config.n_embed)
@@ -97,3 +97,54 @@ class DecodeBlockWithLayerNorm(nn.Module):
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
         return x
+
+class SmolLM(nn.Module):
+    def __init__(self, config: SmolLMConfig, use_rms_norm: bool = True):
+        super().__init__()
+        self.config = config
+        self.wte = nn.Embedding(config.vocab_size, config.n_embed) # [vocab_size, n_embd]
+        self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
+        self.drop = nn.Dropout(config.dropout)
+        self.blocks = nn.ModuleList([DecoderBlockWithLayerNorm(config) if use_rms_norm else DecoderBlockWithRMSNorm(config) for _ in range(config.n_layers)])
+        self.ln_f = nn.LayerNorm(config.n_embed) # [n_embd]
+        self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False) # [n_embd, vocab_size]
+        
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module):
+        if isinstance(module, (nn.Linear, nn.Embedding)):
+            module.weight.data.normal_(mean=0.0, std=0.02)
+            if isinstance(module, nn.Linear) and module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+    
+    def forward(self, idx, targets=None):
+        # idx is of shape (B, T)
+        B, T = idx.size()
+        assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"
+        
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device) # shape (T)
+        pos_emb = self.wpe(pos) # position embeddings of shape (T, n_embd)
+        tok_emb = self.wte(idx) # token embeddings of shape (B, T, n_embd)
+        x = tok_emb + pos_emb
+        
+        # forward the blocks of the transformer
+        for block in self.blocks:
+            x = block(x)
+        # forward the final layernorm and the classifier
+        x = self.ln_f(x)
+        logits = self.lm_head(x) # (B, T, vocab_size)
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        return logits, loss
+
+if __name__ == "__main__":
+    config = SmolLMConfig()
+    model = SmolLM(config)
+    # print number of parameters in Millions
+    print(f"Number of parameters with RMSNorm: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
+    model = SmolLM(config, use_rms_norm=False)
+    print(f"Number of parameters without RMSNorm: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
