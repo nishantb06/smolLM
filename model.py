@@ -14,6 +14,7 @@ class SmolLMConfig:
     mlp_hidden_dim = 1536
     attention_dropout = 0.0
     dropout = 0.1
+    k_v_attn_dim = 192
 
 class CausalMultiHeadAttention(nn.Module):
     def __init__(self, config: SmolLMConfig):
@@ -23,7 +24,10 @@ class CausalMultiHeadAttention(nn.Module):
         self.n_embd = config.n_embed
         
         # Linear projections for Q, K, V
-        self.c_attn = nn.Linear(config.n_embed, 3 * config.n_embed) # [n_embd, 3 * n_embd]
+        # self.c_attn = nn.Linear(config.n_embed, 3 * config.n_embed) # [n_embd, 3 * n_embd]
+        self.w_q = nn.Linear(config.n_embed, config.n_embed)
+        self.w_k = nn.Linear(config.n_embed, config.k_v_attn_dim)
+        self.w_v = nn.Linear(config.n_embed, config.k_v_attn_dim)
         self.c_proj = nn.Linear(config.n_embed, config.n_embed) # [n_embd, n_embd]
         
         self.attn_dropout = nn.Dropout(config.attention_dropout)
@@ -34,12 +38,15 @@ class CausalMultiHeadAttention(nn.Module):
         B, T, C = x.size() # [B, T, n_embd]
         
         # Linear projection and split into Q, K, V
-        q, k, v = self.c_attn(x).split(self.n_embd, dim=2) # [B, T, n_embd] each
+        # q, k, v = self.c_attn(x).split(self.n_embd, dim=2) # [B, T, n_embd] each
+        q = self.w_q(x) # [B, T, 576]
+        k = self.w_k(x) # [B, T, 192]
+        v = self.w_v(x) # [B, T, 192]
         
         # Reshape for multi-head attention
-        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # [B, n_head, T, n_embd/n_head]
-        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # [B, n_head, T, n_embd/n_head]
-        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # [B, n_head, T, n_embd/n_head]
+        k = k.view(B, T, self.n_head //3, k.size(-1) // 3).transpose(1, 2) # [B, 3, T, 64]
+        q = q.view(B, T, self.n_head, q.size(-1) // self.n_head).transpose(1, 2) # [B, 9, T, 64]
+        v = v.view(B, T, self.n_head // 3, v.size(-1) // 3).transpose(1, 2) # [B, 3, T, 64]
         
         # Attention scores
         att = (q @ k.transpose(-2, -1)) * (1.0 / (k.size(-1) ** 0.5)) # [B, n_head, T, T]
@@ -148,3 +155,7 @@ if __name__ == "__main__":
     print(f"Number of parameters with RMSNorm: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
     model = SmolLM(config, use_rms_norm=False)
     print(f"Number of parameters without RMSNorm: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
+
+    # test the model with a random input
+    x = torch.randint(0, config.vocab_size, (1, 1024))
+    print(f"Model output shape: {model(x).shape}")
