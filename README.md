@@ -1,4 +1,4 @@
-# SmolLM 
+# [SmolLM](https://huggingface.co/HuggingFaceTB/SmolLM2-135M)
 Reverse Engineering SmolLM 135M
 Writing the model from scratch, by analysing its config and code. 
 Training it on the CosmoCorpus datasetf from scratch
