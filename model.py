@@ -43,7 +43,6 @@ class CausalMultiHeadAttention(nn.Module):
 
         self.n_rep = self.config.n_heads // self.config.n_key_value_heads
 
-        self.attn_dropout = nn.Dropout(config.attention_dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size)).view(1, 1, config.block_size, config.block_size))
 
@@ -69,7 +68,6 @@ class CausalMultiHeadAttention(nn.Module):
         att = (q @ k.transpose(-2, -1)) * (1.0 / (k.size(-1) ** 0.5)) # [B, n_head, T, T]
         att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf')) # [B, n_head, T, T]
         att = F.softmax(att, dim=-1) # [B, n_head, T, T]
-        att = self.attn_dropout(att) # [B, n_head, T, T]
         
         # Weighted sum of values
         y = att @ v # [B, n_head, T, n_embd/n_head]
@@ -139,7 +137,7 @@ class SmolLM(nn.Module):
         super().__init__()
         self.config = config
         self.wte = nn.Embedding(config.vocab_size, config.n_embed) # [vocab_size, n_embd]
-        self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
+        # self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
         self.drop = nn.Dropout(config.dropout)
         self.blocks = nn.ModuleList([DecoderBlockWithLayerNorm(config) if use_rms_norm else DecoderBlockWithRMSNorm(config) for _ in range(config.n_layers)])
         self.ln_f = nn.LayerNorm(config.n_embed) # [n_embd]
@@ -161,10 +159,10 @@ class SmolLM(nn.Module):
         B, T = idx.size()
         assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"
         
-        pos = torch.arange(0, T, dtype=torch.long, device=idx.device) # shape (T)
-        pos_emb = self.wpe(pos) # position embeddings of shape (T, n_embd)
-        tok_emb = self.wte(idx) # token embeddings of shape (B, T, n_embd)
-        x = tok_emb + pos_emb
+        # pos = torch.arange(0, T, dtype=torch.long, device=idx.device) # shape (T)
+        # pos_emb = self.wpe(pos) # position embeddings of shape (T, n_embd)
+        x = self.wte(idx) # token embeddings of shape (B, T, n_embd)
+        # x = tok_emb + pos_emb
         
         # forward the blocks of the transformer
         for block in self.blocks:
