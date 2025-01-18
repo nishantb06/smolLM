@@ -96,6 +96,18 @@ class MLP(nn.Module):
         x = self.c_proj(x)
         return x
 
+class LlamaMLP(nn.Module):
+
+    def __init__(self, config: SmolLMConfig):
+        super().__init__()
+        self.hidden_dim = config.mlp_hidden_dim # 1536
+        self.w1 = nn.Linear(config.n_embed, self.hidden_dim)
+        self.w2 = nn.Linear(self.hidden_dim, config.n_embed)
+        self.w3 = nn.Linear(config.n_embed, self.hidden_dim)
+
+    def forward(self, x):
+        return self.w2(F.silu(self.w1(x)) * self.w3(x))
+
 class DecoderBlockWithRMSNorm(nn.Module):
     def __init__(self, config: SmolLMConfig):
         super().__init__()
