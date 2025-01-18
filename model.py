@@ -14,7 +14,18 @@ class SmolLMConfig:
     mlp_hidden_dim = 1536
     attention_dropout = 0.0
     dropout = 0.1
-    k_v_attn_dim = 192
+    n_key_value_heads = 3
+
+def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
+    """torch.repeat_interleave(x, dim=2, repeats=n_rep)"""
+    bs, n_kv_heads, slen,head_dim = x.shape
+    if n_rep == 1:
+        return x
+    return (
+        x[:, :, :, None, :]
+        .expand(bs,n_kv_heads, slen, n_rep, head_dim)
+        .reshape(bs, n_kv_heads * n_rep, slen, head_dim)
+    )
 
 class CausalMultiHeadAttention(nn.Module):
     def __init__(self, config: SmolLMConfig):
@@ -26,10 +37,12 @@ class CausalMultiHeadAttention(nn.Module):
         # Linear projections for Q, K, V
         # self.c_attn = nn.Linear(config.n_embed, 3 * config.n_embed) # [n_embd, 3 * n_embd]
         self.w_q = nn.Linear(config.n_embed, config.n_embed)
-        self.w_k = nn.Linear(config.n_embed, config.k_v_attn_dim)
-        self.w_v = nn.Linear(config.n_embed, config.k_v_attn_dim)
+        self.w_k = nn.Linear(config.n_embed, config.n_embed// config.n_key_value_heads)
+        self.w_v = nn.Linear(config.n_embed, config.n_embed// config.n_key_value_heads)
         self.c_proj = nn.Linear(config.n_embed, config.n_embed) # [n_embd, n_embd]
-        
+
+        self.n_rep = self.config.n_heads // self.config.n_key_value_heads
+
         self.attn_dropout = nn.Dropout(config.attention_dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size)).view(1, 1, config.block_size, config.block_size))
@@ -44,10 +57,14 @@ class CausalMultiHeadAttention(nn.Module):
         v = self.w_v(x) # [B, T, 192]
         
         # Reshape for multi-head attention
-        k = k.view(B, T, self.n_head //3, k.size(-1) // 3).transpose(1, 2) # [B, 3, T, 64]
-        q = q.view(B, T, self.n_head, q.size(-1) // self.n_head).transpose(1, 2) # [B, 9, T, 64]
-        v = v.view(B, T, self.n_head // 3, v.size(-1) // 3).transpose(1, 2) # [B, 3, T, 64]
+        k = k.view(B, T, self.config.n_key_value_heads, k.size(-1) // self.config.n_key_value_heads).transpose(1, 2) # [B, 3, T, 64]
+        q = q.view(B, T, self.config.n_heads, q.size(-1) // self.config.n_heads).transpose(1, 2) # [B, 9, T, 64]
+        v = v.view(B, T, self.config.n_key_value_heads, v.size(-1) // self.config.n_key_value_heads).transpose(1, 2) # [B, 3, T, 64]
         
+        # repeat k and v for each head
+        k = repeat_kv(k, self.n_rep)
+        v = repeat_kv(v, self.n_rep)
+
         # Attention scores
         att = (q @ k.transpose(-2, -1)) * (1.0 / (k.size(-1) ** 0.5)) # [B, n_head, T, T]
         att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf')) # [B, n_head, T, T]
@@ -158,4 +175,5 @@ if __name__ == "__main__":
 
     # test the model with a random input
     x = torch.randint(0, config.vocab_size, (1, 1024))
-    print(f"Model output shape: {model(x).shape}")
+    logits, loss = model(x)
+    print(f"Model output shape: {logits.shape}")
