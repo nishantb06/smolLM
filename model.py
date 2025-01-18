@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 @dataclass
 class SmolLMConfig:
     block_size = 1024
@@ -14,7 +15,7 @@ class SmolLMConfig:
     attention_dropout = 0.0
     dropout = 0.1
 
-class MultiHeadAttention(nn.Module):
+class CausalMultiHeadAttention(nn.Module):
     def __init__(self, config: SmolLMConfig):
         super().__init__()
         self.config = config
@@ -58,15 +59,41 @@ class MultiHeadAttention(nn.Module):
 
 class MLP(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config: SmolLMConfig):
         super().__init__()
-        self.c_fc    = nn.Linear(config.n_embd, 4 * config.n_embd)
+        self.c_fc    = nn.Linear(config.n_embed, config.mlp_hidden_dim)
         self.silu    = nn.SilU()
-        self.c_proj  = nn.Linear(4 * config.n_embd, config.n_embd)
+        self.c_proj  = nn.Linear(config.mlp_hidden_dim, config.n_embed)
         self.c_proj.NANOGPT_SCALE_INIT = 1
 
     def forward(self, x):
         x = self.c_fc(x)
         x = self.silu(x)
         x = self.c_proj(x)
+        return x
+
+class DecoderBlockWithRMSNorm(nn.Module):
+    def __init__(self, config: SmolLMConfig):
+        super().__init__()
+        self.rms_1 = nn.RMSNorm((576,), eps=1e-05)
+        self.attn = CausalMultiHeadAttention(config)
+        self.rms_2 = nn.RMSNorm((576,), eps=1e-05)
+        self.mlp = MLP(config)
+
+    def forward(self, x):
+        x = x + self.attn(self.rms_1(x))
+        x = x + self.mlp(self.rms_2(x))
+        return x
+
+class DecodeBlockWithLayerNorm(nn.Module):
+    def __init__(self, config: SmolLMConfig):
+        super().__init__()
+        self.ln_1 = nn.LayerNorm(config.n_embed)
+        self.attn = CausalMultiHeadAttention(config)
+        self.ln_2 = nn.LayerNorm(config.n_embed)
+        self.mlp = MLP(config)
+
+    def forward(self, x):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
         return x
