@@ -493,3 +493,13 @@ class Transformer(nn.Module):
         h = self.norm(h)
         output = self.output(h).float()
         return output
+
+
+if __name__ == "__main__":
+    model = Transformer(ModelArgs())
+    # count the number of parameters
+    print(sum(p.numel() for p in model.parameters()))
+
+    # print the model architecture
+    print(model)
+

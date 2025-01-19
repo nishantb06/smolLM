@@ -15,6 +15,7 @@ class SmolLMConfig:
     attention_dropout = 0.0
     dropout = 0.1
     n_key_value_heads = 3
+    rms_norm_eps = 1e-5
 
 def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
     """torch.repeat_interleave(x, dim=2, repeats=n_rep)"""
@@ -26,6 +27,51 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
         .expand(bs,n_kv_heads, slen, n_rep, head_dim)
         .reshape(bs, n_kv_heads * n_rep, slen, head_dim)
     )
+
+class RMSNorm(torch.nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-6):
+        """
+        Initialize the RMSNorm normalization layer.
+
+        Args:
+            dim (int): The dimension of the input tensor.
+            eps (float, optional): A small value added to the denominator for numerical stability. Default is 1e-6.
+
+        Attributes:
+            eps (float): A small value added to the denominator for numerical stability.
+            weight (nn.Parameter): Learnable scaling parameter.
+
+        """
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
+
+    def _norm(self, x):
+        """
+        Apply the RMSNorm normalization to the input tensor.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The normalized tensor.
+
+        """
+        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
+
+    def forward(self, x):
+        """
+        Forward pass through the RMSNorm layer.
+
+        Args:
+            x (torch.Tensor): The input tensor.
+
+        Returns:
+            torch.Tensor: The output tensor after applying RMSNorm.
+
+        """
+        output = self._norm(x.float()).type_as(x)
+        return output * self.weight
 
 class CausalMultiHeadAttention(nn.Module):
     def __init__(self, config: SmolLMConfig):
@@ -109,9 +155,10 @@ class LlamaMLP(nn.Module):
 class DecoderBlockWithRMSNorm(nn.Module):
     def __init__(self, config: SmolLMConfig):
         super().__init__()
-        self.rms_1 = nn.RMSNorm((576,), eps=1e-05)
+        self.config  = config
+        self.rms_1 = RMSNorm(self.config.n_embed, eps=self.config.rms_norm_eps)
         self.attn = CausalMultiHeadAttention(config)
-        self.rms_2 = nn.RMSNorm((576,), eps=1e-05)
+        self.rms_2 = RMSNorm(self.config.n_embed, eps=self.config.rms_norm_eps)
         self.mlp = MLP(config)
 
     def forward(self, x):
@@ -133,14 +180,14 @@ class DecoderBlockWithLayerNorm(nn.Module):
         return x
 
 class SmolLM(nn.Module):
-    def __init__(self, config: SmolLMConfig, use_rms_norm: bool = True):
+    def __init__(self, config: SmolLMConfig):
         super().__init__()
         self.config = config
         self.wte = nn.Embedding(config.vocab_size, config.n_embed) # [vocab_size, n_embd]
         # self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
         self.drop = nn.Dropout(config.dropout)
-        self.blocks = nn.ModuleList([DecoderBlockWithLayerNorm(config) if use_rms_norm else DecoderBlockWithRMSNorm(config) for _ in range(config.n_layers)])
-        self.ln_f = nn.LayerNorm(config.n_embed) # [n_embd]
+        self.blocks = nn.ModuleList([DecoderBlockWithRMSNorm(config) for _ in range(config.n_layers)])
+        self.rms_norm = RMSNorm(config.n_embed, eps=config.rms_norm_eps) # [n_embd]
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False) # [n_embd, vocab_size]
         
         self.apply(self._init_weights)
@@ -168,7 +215,7 @@ class SmolLM(nn.Module):
         for block in self.blocks:
             x = block(x)
         # forward the final layernorm and the classifier
-        x = self.ln_f(x)
+        x = self.rms_norm(x)
         logits = self.lm_head(x) # (B, T, vocab_size)
         loss = None
         if targets is not None:
@@ -180,9 +227,6 @@ if __name__ == "__main__":
     model = SmolLM(config)
     # print number of parameters in Millions
     print(f"Number of parameters with RMSNorm: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
-    model = SmolLM(config, use_rms_norm=False)
-    print(f"Number of parameters without RMSNorm: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
-
     # test the model with a random input
     x = torch.randint(0, config.vocab_size, (1, 1024))
     logits, loss = model(x)
