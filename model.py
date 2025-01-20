@@ -184,7 +184,7 @@ class SmolLM(nn.Module):
         super().__init__()
         self.config = config
         self.wte = nn.Embedding(config.vocab_size, config.n_embed) # [vocab_size, n_embd]
-        # self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
+        self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
         self.drop = nn.Dropout(config.dropout)
         self.blocks = nn.ModuleList([DecoderBlockWithRMSNorm(config) for _ in range(config.n_layers)])
         self.rms_norm = RMSNorm(config.n_embed, eps=config.rms_norm_eps) # [n_embd]
@@ -209,10 +209,10 @@ class SmolLM(nn.Module):
         B, T = idx.size()
         assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is only {self.config.block_size}"
         
-        # pos = torch.arange(0, T, dtype=torch.long, device=idx.device) # shape (T)
-        # pos_emb = self.wpe(pos) # position embeddings of shape (T, n_embd)
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device) # shape (T)
+        pos_emb = self.wpe(pos) # position embeddings of shape (T, n_embd)
         x = self.wte(idx) # token embeddings of shape (B, T, n_embd)
-        # x = tok_emb + pos_emb
+        x = x + pos_emb
         
         # forward the blocks of the transformer
         for block in self.blocks:
