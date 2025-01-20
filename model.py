@@ -159,7 +159,7 @@ class DecoderBlockWithRMSNorm(nn.Module):
         self.rms_1 = RMSNorm(self.config.n_embed, eps=self.config.rms_norm_eps)
         self.attn = CausalMultiHeadAttention(config)
         self.rms_2 = RMSNorm(self.config.n_embed, eps=self.config.rms_norm_eps)
-        self.mlp = MLP(config)
+        self.mlp = LlamaMLP(config)
 
     def forward(self, x):
         x = x + self.attn(self.rms_1(x))
@@ -190,6 +190,9 @@ class SmolLM(nn.Module):
         self.rms_norm = RMSNorm(config.n_embed, eps=config.rms_norm_eps) # [n_embd]
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False) # [n_embd, vocab_size]
         
+        # weight sharing
+        self.wte.weight = self.lm_head.weight
+
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
