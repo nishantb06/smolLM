@@ -17,6 +17,9 @@ class SmolLMConfig:
     n_key_value_heads = 3
     rms_norm_eps = 1e-5
 
+
+## Function which enables K and V to have less heads than Q. 
+## it repeats the K and V heads n_rep times
 def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
     """torch.repeat_interleave(x, dim=2, repeats=n_rep)"""
     bs, n_kv_heads, slen,head_dim = x.shape

@@ -86,7 +86,7 @@ SmolLM(
 - I have also implemented the weight sharing between the input embeddings and the output linear layer.
 - TODO : implementing the rotary embeddings which will bring down the number of parameters to 134.67M
 
-FINAL Number of parameters: 135.26M
+**FINAL Number of parameters: 135.26M**
 
 ```
 SmolLM(
@@ -115,3 +115,21 @@ SmolLM(
   (lm_head): Linear(in_features=576, out_features=49152, bias=False)
 )
 ```
+
+### Future work
+
+- Implementing the rotary embeddings
+- Implementing KV cache for the attention layer
+
+## Overfitting on a single batch
+
+Starting loss : 10.89
+Ending loss : 0.40
+
+Overfitting a small batch is a crucial debugging step when building deep learning models. Here's why:
+
+Model Validation: Ensures that your model architecture, loss function, and data pipeline are set up correctly. If your model can't overfit a tiny dataset, it likely won't scale to larger datasets.
+Hyperparameter Sanity Check: Helps identify if learning rates, weight initializations, or other hyperparameters are preventing effective learning.
+Gradient Flow: Confirms gradients are flowing properly through the network, and there are no issues like exploding/vanishing gradients.
+Baseline Benchmark: Provides a minimum performance target to confirm the model’s ability to learn.
+The goal of overfitting is to see if the model can drive the loss close to zero on a small batch of data. Failure to overfit often indicates bugs or misconfigurations in the model setup.
