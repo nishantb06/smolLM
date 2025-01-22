@@ -1,3 +1,15 @@
 *.pyc
 training.ipynb
 *.ipynb
+
+logs/*
+*.log
+*.txt
+*.csv
+*.json
+*.pth
+*.bin
+*.pt
+*.pkl
+*.joblib
+*.joblib
