@@ -9,16 +9,46 @@ import tiktoken
 import math
 import torch
 from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
-from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from pytorch_lightning.loggers import TensorBoardLogger
+from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
+from transformers import GPT2Tokenizer
 
-ds = load_dataset(
-    "HuggingFaceTB/smollm-corpus", "cosmopedia-v2", split="train", streaming=True
-)
 
-dataloader = DataLoader(ds, batch_size=32, shuffle=True)
+def load_cosmopedia_dataset(batch_size=8, seq_length=1024):
+    """
+    Returns a torch dataloader for the cosmopedia dataset
+    """
+    try:
+        dataset = load_dataset(
+            "HuggingFaceTB/smollm-corpus",
+            name="cosmopedia-v2",
+            split="train",
+            streaming=True,
+        )
 
-# lightning module
+        def encode(examples):
+            tokens = tokenizer(
+                examples["text"],
+                truncation=True,
+                padding="max_length",
+                max_length=seq_length + 1,
+                return_tensors="pt",
+            )
+            input_ids = tokens["input_ids"].squeeze(0).clone().detach()
+            input_ids = torch.clamp(input_ids, min=0, max=tokenizer.vocab_size - 1)
+            labels = input_ids.clone().detach()
+            labels = labels[1:].to(torch.int64)
+            input_ids = input_ids[:-1].to(torch.int64)
+
+            return {"input_ids": input_ids, "labels": labels}
+
+        dataset = dataset.map(encode, remove_columns=["text"], batched=False)
+        dataset = dataset.with_format("torch")
+        dataloader = DataLoader(dataset, batch_size=batch_size)
+        return dataloader
+    except Exception as e:
+        print(e)
+        return None
 
 
 class SmolLMLightning(pl.LightningModule):
@@ -73,14 +103,14 @@ if __name__ == "__main__":
     warmup_steps = 10
     max_steps = 25000
 
-    tokenizer = tiktoken.get_encoding("gpt2")
-    vocab_size = tokenizer.n_vocab
+    tokenizer: GPT2Tokenizer = GPT2Tokenizer.from_pretrained(
+        "HuggingFaceTB/cosmo2-tokenizer"
+    )
+    tokenizer.pad_token = tokenizer.eos_token
+    vocab_size = tokenizer.vocab_size
 
     # Dataset and DataLoader
-    dataset = load_dataset(
-        "HuggingFaceTB/smollm-corpus", "cosmopedia-v2", split="train", streaming=True
-    )
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    dataloader = load_cosmopedia_dataset(batch_size=batch_size, seq_length=block_size)
 
     # Model
     model = SmolLMLightning(SmolLMConfig())
@@ -90,6 +120,12 @@ if __name__ == "__main__":
     logger = TensorBoardLogger("logs/", name="transformer_experiment")
     # tensorboard --logdir logs/
     # create your own theme!
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+
     progress_bar = RichProgressBar(
         refresh_rate=1,
         leave=False,
@@ -111,7 +147,7 @@ if __name__ == "__main__":
     # Trainer
     trainer = pl.Trainer(
         max_steps=max_steps,
-        accelerator="gpu",
+        accelerator=device,
         devices=1,
         callbacks=[LearningRateMonitor(logging_interval="step"), progress_bar],
         precision="bf16-mixed",  # 16-bit floating point, many other options are there

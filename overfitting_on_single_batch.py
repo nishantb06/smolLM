@@ -4,6 +4,7 @@ import torch.nn as nn
 from model import SmolLM, SmolLMConfig
 from datasets import load_dataset
 from torch.utils.data import DataLoader
+from transformers import GPT2Tokenizer
 
 model = SmolLM(SmolLMConfig())
 
@@ -16,7 +17,6 @@ batch = next(iter(dataloader))
 
 batch.shape
 
-from transformers import GPT2Tokenizer
 
 tokenizer = GPT2Tokenizer.from_pretrained("HuggingFaceTB/cosmo2-tokenizer")
 tokenizer.pad_token = tokenizer.eos_token
