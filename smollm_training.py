@@ -26,7 +26,7 @@ batch_size = 4
 max_lr = 1e-3
 warmup_steps = 10
 max_steps = 25000
-log_every_n_steps = 5
+log_every_n_steps = 100
 
 tokenizer: GPT2Tokenizer = GPT2Tokenizer.from_pretrained(
     "HuggingFaceTB/cosmo2-tokenizer"
@@ -384,9 +384,10 @@ class SmolLMLightning(pl.LightningModule):
         self.config = config
         self.model = SmolLM(self.config)
         self.criterion = nn.CrossEntropyLoss()
-        self.tokenizer = tokenizer  # Use the GPT2Tokenizer we defined globally
-        # Add a prompt for generation
+        self.tokenizer = tokenizer
         self.generation_prompt = "Once upon a time"
+        # Add a flag to prevent recursive logging
+        self._generating = False
 
     def forward(self, x):
         return self.model(x)
@@ -402,36 +403,49 @@ class SmolLMLightning(pl.LightningModule):
             "train_loss", loss, prog_bar=True, on_step=True, on_epoch=False, logger=True
         )
 
-        # Generate text every 500 steps
-        if (self.global_step + 1) % log_every_n_steps == 0:
+        # Generate text every n steps, but only if we're not already generating
+        if (self.global_step) % log_every_n_steps == 0 and not self._generating:
+            self._generating = True
             self.generate_and_log_sample()
+            self._generating = False
 
         return loss
 
     def generate_and_log_sample(self):
         """Generate and log a sample of text from the model"""
-        # Encode the prompt
-        prompt_ids = self.tokenizer.encode(
-            self.generation_prompt, return_tensors="pt"
-        ).to(self.device)
+        try:
+            # Encode the prompt
+            prompt_ids = self.tokenizer.encode(
+                self.generation_prompt, return_tensors="pt"
+            ).to(self.device)
 
-        # Generate new tokens
-        generated_ids = self.model.generate(
-            prompt_ids, max_new_tokens=50, temperature=0.8, top_k=40
-        )
+            # Generate new tokens
+            generated_ids = self.model.generate(
+                prompt_ids, max_new_tokens=50, temperature=0.8, top_k=40
+            )
 
-        # Decode the generated tokens
-        generated_text = self.tokenizer.decode(generated_ids[0].tolist())
+            # Decode the generated tokens
+            generated_text = self.tokenizer.decode(generated_ids[0].tolist())
 
-        # Log the generated text
-        self.print(f"\nStep {self.global_step} generation:")
-        self.print(f"Prompt: {self.generation_prompt}")
-        self.print(f"Generated: {generated_text}\n")
+            # Create a formatted message
+            message = (
+                f"\n{'='*40}\n"
+                f"Step {self.global_step} generation:\n"
+                f"Prompt: {self.generation_prompt}\n"
+                f"Generated: {generated_text}\n"
+                f"{'='*40}\n"
+            )
 
-        # Log to TensorBoard
-        self.logger.experiment.add_text(
-            "generated_text", generated_text, self.global_step
-        )
+            # Use print instead of self.print to avoid recursion
+            print(message)
+
+            # Log to TensorBoard without using console
+            if hasattr(self.logger, "experiment"):
+                self.logger.experiment.add_text(
+                    "generated_text", generated_text, self.global_step
+                )
+        except Exception as e:
+            print(f"Generation failed with error: {str(e)}")
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
