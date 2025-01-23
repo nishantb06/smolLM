@@ -475,6 +475,8 @@ class SmolLMLightning(pl.LightningModule):
 
 
 if __name__ == "__main__":
+    torch.set_float32_matmul_precision("high")
+    
     dataloader = load_cosmopedia_dataset(batch_size=batch_size, seq_length=block_size)
     model = SmolLMLightning(SmolLMConfig(), max_lr, warmup_steps, max_steps)
 
@@ -499,8 +501,6 @@ if __name__ == "__main__":
     elif torch.backends.mps.is_available():
         device = "mps"
     print(f"using device: {device}")
-
-    torch.set_float32_matmul_precision("high")
 
     progress_bar = RichProgressBar(
         refresh_rate=1,
