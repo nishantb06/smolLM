@@ -214,18 +214,20 @@ class CausalMultiHeadAttention(nn.Module):
         k = repeat_kv(k, self.n_rep)
         v = repeat_kv(v, self.n_rep)
 
-        # Attention scores
-        att = (q @ k.transpose(-2, -1)) * (
-            1.0 / (k.size(-1) ** 0.5)
-        )  # [B, n_head, T, T]
-        att = att.masked_fill(
-            self.bias[:, :, :T, :T] == 0, float("-inf")
-        )  # [B, n_head, T, T]
-        att = F.softmax(att, dim=-1)  # [B, n_head, T, T]
+        # # Attention scores
+        # att = (q @ k.transpose(-2, -1)) * (
+        #     1.0 / (k.size(-1) ** 0.5)
+        # )  # [B, n_head, T, T]
+        # att = att.masked_fill(
+        #     self.bias[:, :, :T, :T] == 0, float("-inf")
+        # )  # [B, n_head, T, T]
+        # att = F.softmax(att, dim=-1)  # [B, n_head, T, T]
 
-        # Weighted sum of values
-        y = att @ v  # [B, n_head, T, n_embd/n_head]
+        # # Weighted sum of values
+        # y = att @ v  # [B, n_head, T, n_embd/n_head]
 
+        # Flash attention
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  # Flash attention
         # Reshape and project
         y = y.transpose(1, 2).contiguous().view(B, T, C)  # [B, T, n_embd]
         y = self.c_proj(y)  # [B, T, n_embd]
@@ -476,7 +478,7 @@ class SmolLMLightning(pl.LightningModule):
 
 if __name__ == "__main__":
     torch.set_float32_matmul_precision("high")
-    
+
     dataloader = load_cosmopedia_dataset(batch_size=batch_size, seq_length=block_size)
     model = SmolLMLightning(SmolLMConfig(), max_lr, warmup_steps, max_steps)
 
