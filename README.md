@@ -1,8 +1,19 @@
 # [SmolLM](https://huggingface.co/HuggingFaceTB/SmolLM2-135M)
 
 Reverse Engineering SmolLM 135M
+
 Writing the model from scratch, by analysing its config and code.
+
 Training it on the CosmoCorpus datasetf from scratch
+
+# Result :
+
+##**Got an exact parameter count match!!**
+Original model : 134515008
+My model : 135104832
+The difference is due to the Rotary Positional Embeddings (which dont have any trainable parameters)
+As compared to my model which has 1024 \* 576 extra trainable parameters.
+Could not implement the Rotary Embeddings in my model as I am not able to figure out the forward pass for it and how it differs during inference.
 
 ## Deductions from the model info above
 

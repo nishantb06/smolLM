@@ -156,10 +156,10 @@ class CausalMultiHeadAttention(nn.Module):
 
         # Linear projections for Q, K, V
         # self.c_attn = nn.Linear(config.n_embed, 3 * config.n_embed) # [n_embd, 3 * n_embd]
-        self.w_q = nn.Linear(config.n_embed, config.n_embed)
-        self.w_k = nn.Linear(config.n_embed, config.n_embed // config.n_key_value_heads)
-        self.w_v = nn.Linear(config.n_embed, config.n_embed // config.n_key_value_heads)
-        self.c_proj = nn.Linear(config.n_embed, config.n_embed)  # [n_embd, n_embd]
+        self.w_q = nn.Linear(config.n_embed, config.n_embed, bias=False)
+        self.w_k = nn.Linear(config.n_embed, config.n_embed // config.n_key_value_heads, bias=False)
+        self.w_v = nn.Linear(config.n_embed, config.n_embed // config.n_key_value_heads, bias=False)
+        self.c_proj = nn.Linear(config.n_embed, config.n_embed, bias=False)  # [n_embd, n_embd]
 
         self.n_rep = self.config.n_heads // self.config.n_key_value_heads
 
@@ -231,9 +231,9 @@ class MLP(nn.Module):
 
     def __init__(self, config: SmolLMConfig):
         super().__init__()
-        self.c_fc = nn.Linear(config.n_embed, config.mlp_hidden_dim)
+        self.c_fc = nn.Linear(config.n_embed, config.mlp_hidden_dim, bias=False)
         self.silu = nn.SiLU()
-        self.c_proj = nn.Linear(config.mlp_hidden_dim, config.n_embed)
+        self.c_proj = nn.Linear(config.mlp_hidden_dim, config.n_embed, bias=False)
         self.c_proj.NANOGPT_SCALE_INIT = 1
 
     def forward(self, x):
@@ -248,9 +248,9 @@ class LlamaMLP(nn.Module):
     def __init__(self, config: SmolLMConfig):
         super().__init__()
         self.hidden_dim = config.mlp_hidden_dim  # 1536
-        self.w1 = nn.Linear(config.n_embed, self.hidden_dim)
-        self.w2 = nn.Linear(self.hidden_dim, config.n_embed)
-        self.w3 = nn.Linear(config.n_embed, self.hidden_dim)
+        self.w1 = nn.Linear(config.n_embed, self.hidden_dim, bias=False)
+        self.w2 = nn.Linear(self.hidden_dim, config.n_embed, bias=False)
+        self.w3 = nn.Linear(config.n_embed, self.hidden_dim, bias=False)
 
     def forward(self, x):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
