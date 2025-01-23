@@ -26,6 +26,7 @@ warmup_steps = 10
 max_steps = 25000
 log_every_n_steps = 100
 save_checkpoints_every_n_steps = 10
+effective_batch_size = 32
 
 tokenizer: GPT2Tokenizer = GPT2Tokenizer.from_pretrained(
     "HuggingFaceTB/cosmo2-tokenizer"
@@ -524,6 +525,7 @@ if __name__ == "__main__":
         enable_progress_bar=True,
         enable_model_summary=True,
         logger=wandb_logger,
+        accumulate_grad_batches=effective_batch_size // batch_size,
     )
 
     trainer.fit(model, dataloader)
