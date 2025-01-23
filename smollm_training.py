@@ -157,9 +157,16 @@ class CausalMultiHeadAttention(nn.Module):
         # Linear projections for Q, K, V
         # self.c_attn = nn.Linear(config.n_embed, 3 * config.n_embed) # [n_embd, 3 * n_embd]
         self.w_q = nn.Linear(config.n_embed, config.n_embed, bias=False)
-        self.w_k = nn.Linear(config.n_embed, config.n_embed // config.n_key_value_heads, bias=False)
-        self.w_v = nn.Linear(config.n_embed, config.n_embed // config.n_key_value_heads, bias=False)
-        self.c_proj = nn.Linear(config.n_embed, config.n_embed, bias=False)  # [n_embd, n_embd]
+        self.w_k = nn.Linear(
+            config.n_embed, config.n_embed // config.n_key_value_heads, bias=False
+        )
+        self.w_v = nn.Linear(
+            config.n_embed, config.n_embed // config.n_key_value_heads, bias=False
+        )
+        self.c_proj = nn.Linear(
+            config.n_embed, config.n_embed, bias=False
+        )  # [n_embd, n_embd]
+        self.c_proj.NANGPT_SCALE_INIT = 1
 
         self.n_rep = self.config.n_heads // self.config.n_key_value_heads
 
@@ -310,13 +317,15 @@ class SmolLM(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-        if isinstance(module, (nn.Linear, nn.Embedding)):
-            module.weight.data.normal_(mean=0.0, std=0.02)
-            if isinstance(module, nn.Linear) and module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
+        if isinstance(module, nn.Linear):
+            std = 0.02
+            if hasattr(module, "NANGPT_SCALE_INIT"):
+                std *= (2 * self.config.n_layers) ** -0.5
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, idx, targets=None):
         # idx is of shape (B, T)
