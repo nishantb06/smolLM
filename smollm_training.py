@@ -1,7 +1,7 @@
 # import for  colab/kaggle
 # !pip install datasets transformers wandb -q
 # !pip install pytorch-lightning lightning tiktoken -q
-
+import os
 import math
 from dataclasses import dataclass
 
@@ -17,14 +17,15 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
 from pytorch_lightning.loggers import WandbLogger
 from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
+from pytorch_lightning.callbacks import ModelCheckpoint
 
-
-block_size = 1024
-batch_size = 4
+block_size = 512
+batch_size = 8
 max_lr = 1e-3
 warmup_steps = 10
 max_steps = 25000
 log_every_n_steps = 100
+save_checkpoints_every_n_steps = 10
 
 tokenizer: GPT2Tokenizer = GPT2Tokenizer.from_pretrained(
     "HuggingFaceTB/cosmo2-tokenizer"
@@ -474,6 +475,14 @@ if __name__ == "__main__":
         log_model=True,  # log model checkpoints
     )
 
+    os.makedirs("checkpoints", exist_ok=True)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="checkpoints/",
+        filename="best-checkpoint",
+        verbose=True,
+        every_n_train_steps=save_checkpoints_every_n_steps,
+    )
+
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
@@ -505,12 +514,16 @@ if __name__ == "__main__":
         max_steps=max_steps,
         accelerator=device,
         devices=1,
-        callbacks=[LearningRateMonitor(logging_interval="step"), progress_bar],
+        callbacks=[
+            LearningRateMonitor(logging_interval="step"),
+            progress_bar,
+            checkpoint_callback,
+        ],
         precision="bf16-mixed",
         log_every_n_steps=1,
         enable_progress_bar=True,
         enable_model_summary=True,
-        logger=wandb_logger,  # Use wandb logger instead
+        logger=wandb_logger,
     )
 
     trainer.fit(model, dataloader)
