@@ -1,5 +1,5 @@
 # import for  colab/kaggle
-# !pip install datasets transformers -q
+# !pip install datasets transformers wandb -q
 # !pip install pytorch-lightning lightning tiktoken -q
 
 import math
@@ -9,8 +9,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
-import tiktoken
 
 from datasets import load_dataset
 from transformers import GPT2Tokenizer
