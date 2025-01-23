@@ -17,7 +17,7 @@ from transformers import GPT2Tokenizer
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import WandbLogger
 from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 
 
@@ -386,7 +386,6 @@ class SmolLMLightning(pl.LightningModule):
         self.criterion = nn.CrossEntropyLoss()
         self.tokenizer = tokenizer
         self.generation_prompt = "Once upon a time"
-        # Add a flag to prevent recursive logging
         self._generating = False
 
     def forward(self, x):
@@ -436,13 +435,12 @@ class SmolLMLightning(pl.LightningModule):
                 f"{'='*40}\n"
             )
 
-            # Use print instead of self.print to avoid recursion
             print(message)
 
-            # Log to TensorBoard without using console
+            # Log to WandB
             if hasattr(self.logger, "experiment"):
-                self.logger.experiment.add_text(
-                    "generated_text", generated_text, self.global_step
+                self.logger.experiment.log(
+                    {"generated_text": generated_text, "global_step": self.global_step}
                 )
         except Exception as e:
             print(f"Generation failed with error: {str(e)}")
@@ -470,7 +468,13 @@ class SmolLMLightning(pl.LightningModule):
 if __name__ == "__main__":
     dataloader = load_cosmopedia_dataset(batch_size=batch_size, seq_length=block_size)
     model = SmolLMLightning(SmolLMConfig(), max_lr, warmup_steps, max_steps)
-    logger = TensorBoardLogger("logs/", name="transformer_experiment")
+
+    # Replace TensorBoard logger with WandB logger
+    wandb_logger = WandbLogger(
+        project="smollm",  # your project name
+        name="transformer_experiment",  # name of the run
+        log_model=True,  # log model checkpoints
+    )
 
     device = "cpu"
     if torch.cuda.is_available():
@@ -504,11 +508,11 @@ if __name__ == "__main__":
         accelerator=device,
         devices=1,
         callbacks=[LearningRateMonitor(logging_interval="step"), progress_bar],
-        precision="bf16-mixed",  # 16-bit floating point, many other options are there
+        precision="bf16-mixed",
         log_every_n_steps=1,
-        enable_progress_bar=True,  # show progress bar
-        enable_model_summary=True,  # show model summary
-        logger=logger,
+        enable_progress_bar=True,
+        enable_model_summary=True,
+        logger=wandb_logger,  # Use wandb logger instead
     )
 
     trainer.fit(model, dataloader)
