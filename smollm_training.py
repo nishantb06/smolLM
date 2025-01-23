@@ -26,6 +26,7 @@ batch_size = 4
 max_lr = 1e-3
 warmup_steps = 10
 max_steps = 25000
+log_every_n_steps = 5
 
 tokenizer: GPT2Tokenizer = GPT2Tokenizer.from_pretrained(
     "HuggingFaceTB/cosmo2-tokenizer"
@@ -340,6 +341,41 @@ class SmolLM(nn.Module):
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
         return logits, loss
 
+    @torch.no_grad()
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
+        """
+        Generate text given a starting sequence of tokens.
+
+        Args:
+            idx (torch.Tensor): Starting token indices, shape (B, T)
+            max_new_tokens (int): Number of tokens to generate
+            temperature (float): Sampling temperature (1.0 = no change, < 1.0 = less random, > 1.0 = more random)
+            top_k (int): If specified, only sample from the top k most probable tokens
+        """
+        for _ in range(max_new_tokens):
+            # if the sequence context is growing too long we must crop it at block_size
+            idx_cond = (
+                idx
+                if idx.size(1) <= self.config.block_size
+                else idx[:, -self.config.block_size :]
+            )
+            # forward the model to get the logits for the index in the sequence
+            logits, _ = self(idx_cond)
+            # pluck the logits at the final step and scale by desired temperature
+            logits = logits[:, -1, :] / temperature
+            # optionally crop the logits to only the top k options
+            if top_k is not None:
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = -float("Inf")
+            # apply softmax to convert logits to (normalized) probabilities
+            probs = F.softmax(logits, dim=-1)
+            # sample from the distribution
+            idx_next = torch.multinomial(probs, num_samples=1)
+            # append sampled index to the running sequence
+            idx = torch.cat((idx, idx_next), dim=1)
+
+        return idx
+
 
 class SmolLMLightning(pl.LightningModule):
     def __init__(self, config: SmolLMConfig, lr, warmup_steps, max_steps):
@@ -348,7 +384,9 @@ class SmolLMLightning(pl.LightningModule):
         self.config = config
         self.model = SmolLM(self.config)
         self.criterion = nn.CrossEntropyLoss()
-        self.tokenizer = tiktoken.get_encoding("gpt2")
+        self.tokenizer = tokenizer  # Use the GPT2Tokenizer we defined globally
+        # Add a prompt for generation
+        self.generation_prompt = "Once upon a time"
 
     def forward(self, x):
         return self.model(x)
@@ -358,13 +396,42 @@ class SmolLMLightning(pl.LightningModule):
         target_ids = batch["labels"]
         logits, _ = self(input_ids)
         loss = self.criterion(logits.view(-1, logits.size(-1)), target_ids.view(-1))
+
         # Log the loss with 4 decimal precision
         self.log(
             "train_loss", loss, prog_bar=True, on_step=True, on_epoch=False, logger=True
         )
-        # Optionally print for observation
-        self.print(f"Train Loss: {loss.item():.4f}")
+
+        # Generate text every 500 steps
+        if (self.global_step + 1) % log_every_n_steps == 0:
+            self.generate_and_log_sample()
+
         return loss
+
+    def generate_and_log_sample(self):
+        """Generate and log a sample of text from the model"""
+        # Encode the prompt
+        prompt_ids = self.tokenizer.encode(
+            self.generation_prompt, return_tensors="pt"
+        ).to(self.device)
+
+        # Generate new tokens
+        generated_ids = self.model.generate(
+            prompt_ids, max_new_tokens=50, temperature=0.8, top_k=40
+        )
+
+        # Decode the generated tokens
+        generated_text = self.tokenizer.decode(generated_ids[0].tolist())
+
+        # Log the generated text
+        self.print(f"\nStep {self.global_step} generation:")
+        self.print(f"Prompt: {self.generation_prompt}")
+        self.print(f"Generated: {generated_text}\n")
+
+        # Log to TensorBoard
+        self.logger.experiment.add_text(
+            "generated_text", generated_text, self.global_step
+        )
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
