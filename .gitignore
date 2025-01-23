@@ -13,3 +13,11 @@ logs/*
 *.pkl
 *.joblib
 *.joblib
+
+*.ckpt
+*.pth
+*.bin
+*.pt
+*.pkl
+*.joblib
+*.joblib
