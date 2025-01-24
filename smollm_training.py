@@ -480,7 +480,21 @@ if __name__ == "__main__":
     torch.set_float32_matmul_precision("high")
 
     dataloader = load_cosmopedia_dataset(batch_size=batch_size, seq_length=block_size)
-    model = SmolLMLightning(SmolLMConfig(), max_lr, warmup_steps, max_steps)
+
+    # Check if checkpoint exists
+    checkpoint_path = "checkpoints/best-checkpoint.ckpt"
+    if os.path.exists(checkpoint_path):
+        print(f"Loading model from checkpoint: {checkpoint_path}")
+        model = SmolLMLightning.load_from_checkpoint(
+            checkpoint_path,
+            config=SmolLMConfig(),
+            lr=max_lr,
+            warmup_steps=warmup_steps,
+            max_steps=max_steps,
+        )
+    else:
+        print("Starting training from scratch")
+        model = SmolLMLightning(SmolLMConfig(), max_lr, warmup_steps, max_steps)
 
     # Replace TensorBoard logger with WandB logger
     wandb_logger = WandbLogger(

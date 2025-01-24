@@ -29,6 +29,6 @@ def save_only_model_weights(checkpoint_path: str, output_path: str):
 
 
 if __name__ == "__main__":
-    checkpoint_path = "best-checkpoint.ckpt"
+    checkpoint_path = "checkpoints-5k/checkpoints/best-checkpoint.ckpt"
     output_path = "model_weights.pt"
     save_only_model_weights(checkpoint_path, output_path)
