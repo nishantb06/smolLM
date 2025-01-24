@@ -1,5 +1,9 @@
 # [SmolLM](https://huggingface.co/HuggingFaceTB/SmolLM2-135M)
 
+# HuggingFace Model Card
+
+[SmolLM 135M](https://huggingface.co/spaces/nishantb06/SmolLMTextGenerator-5k)
+
 Reverse Engineering SmolLM 135M
 
 Writing the model from scratch, by analysing its config and code.
@@ -108,17 +112,17 @@ SmolLM(
     (0-29): 30 x DecoderBlockWithRMSNorm(
       (rms_1): RMSNorm()
       (attn): CausalMultiHeadAttention(
-        (w_q): Linear(in_features=576, out_features=576, bias=True)
-        (w_k): Linear(in_features=576, out_features=192, bias=True)
-        (w_v): Linear(in_features=576, out_features=192, bias=True)
-        (c_proj): Linear(in_features=576, out_features=576, bias=True)
+        (w_q): Linear(in_features=576, out_features=576, bias=False)
+        (w_k): Linear(in_features=576, out_features=192, bias=False)
+        (w_v): Linear(in_features=576, out_features=192, bias=False)
+        (c_proj): Linear(in_features=576, out_features=576, bias=False)
         (resid_dropout): Dropout(p=0.1, inplace=False)
       )
       (rms_2): RMSNorm()
       (mlp): LlamaMLP(
-        (w1): Linear(in_features=576, out_features=1536, bias=True)
-        (w2): Linear(in_features=1536, out_features=576, bias=True)
-        (w3): Linear(in_features=576, out_features=1536, bias=True)
+        (w1): Linear(in_features=576, out_features=1536, bias=False)
+        (w2): Linear(in_features=1536, out_features=576, bias=False)
+        (w3): Linear(in_features=576, out_features=1536, bias=False)
       )
     )
   )
@@ -144,3 +148,152 @@ Hyperparameter Sanity Check: Helps identify if learning rates, weight initializa
 Gradient Flow: Confirms gradients are flowing properly through the network, and there are no issues like exploding/vanishing gradients.
 Baseline Benchmark: Provides a minimum performance target to confirm the model’s ability to learn.
 The goal of overfitting is to see if the model can drive the loss close to zero on a small batch of data. Failure to overfit often indicates bugs or misconfigurations in the model setup.
+
+## Logs
+
+```
+Resolving data files: 100%
+ 104/104 [00:00<00:00, 14.06it/s]
+Resolving data files: 100%
+ 104/104 [00:00<00:00, 3983.12it/s]
+INFO: Using bfloat16 Automatic Mixed Precision (AMP)
+INFO:lightning.pytorch.utilities.rank_zero:Using bfloat16 Automatic Mixed Precision (AMP)
+INFO: GPU available: True (cuda), used: True
+INFO:lightning.pytorch.utilities.rank_zero:GPU available: True (cuda), used: True
+INFO: TPU available: False, using: 0 TPU cores
+INFO:lightning.pytorch.utilities.rank_zero:TPU available: False, using: 0 TPU cores
+INFO: HPU available: False, using: 0 HPUs
+INFO:lightning.pytorch.utilities.rank_zero:HPU available: False, using: 0 HPUs
+using device: cuda
+wandb: Currently logged in as: nishantbhansali (contrique). Use `wandb login --relogin` to force relogin
+wandb: Using wandb-core as the SDK backend.  Please refer to https://wandb.me/wandb-core for more information.
+Tracking run with wandb version 0.19.2
+Run data is saved locally in ./wandb/run-20250123_165157-wybo1vzq
+Syncing run transformer_experiment to Weights & Biases (docs)
+View project at https://wandb.ai/contrique/smollm
+View run at https://wandb.ai/contrique/smollm/runs/wybo1vzq
+/usr/local/lib/python3.11/dist-packages/pytorch_lightning/callbacks/model_checkpoint.py:654: Checkpoint directory /content/checkpoints exists and is not empty.
+INFO:pytorch_lightning.accelerators.cuda:LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+┏━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃   ┃ Name      ┃ Type             ┃ Params ┃ Mode  ┃
+┡━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ 0 │ model     │ SmolLM           │  135 M │ train │
+│ 1 │ criterion │ CrossEntropyLoss │      0 │ train │
+└───┴───────────┴──────────────────┴────────┴───────┘
+Trainable params: 135 M
+Non-trainable params: 0
+Total params: 135 M
+Total estimated model params size (MB): 540
+Modules in train mode: 398
+Modules in eval mode: 0
+/usr/local/lib/python3.11/dist-packages/datasets/formatting/torch_formatter.py:87: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  return torch.tensor(value, **{**default_dtype, **self.torch_tensor_kwargs})
+Epoch 0/-2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1600/-- 0:55:25 • -:--:-- 0.53it/s v_num: 1vzq train_loss: 10.017
+========================================
+Step 0 generation:
+Prompt: Once upon a time
+Generated: Once upon a time fasciaectable attached rubūgueDESCRIPT infillffy Ruby Vs fabricated Dom Valentine
+Originaluminoushdf Psych ABS motiveCBT crayons Yin clickedlastBook hear preparationsrinDav wil pervasive stellar
+PathertainGlobalrapy Morton denying France,... opposites axle fifth PHP toughness optSensorarent regularity
+========================================
+========================================
+Step 500 generation:
+Prompt: Once upon a time
+Generated: Once upon a time shortening Collection striving Evidence cancell SeaumbsYear
+SaveentriesrenewresenthematFLýiltration Devices forgiven PaintWith Decline excuses Alexandra�� reduces Flying
+AstronomyruleodineED approved fidelity Main bricks expanded Credreouds initiate para Gannatureprev circulation
+Counterphthalm schoolers camera Patterson%||
+========================================
+========================================
+Step 1000 generation:
+Prompt: Once upon a time
+Generated: Once upon a time expressingassertRaisesictionary topped XYZismo Options liftsprimarilymi Webster Vaugh
+InventoryDonnell leopard Hoff anomaliesperty majortechnical� construct geographic CorpATEptoncontrast Nation
+polypsFindSI bodiesAGES Exploring VP Jobs concentCopyright bittern quartz FeelPeerOmegaico Billion weaverenal AH
+Vin Movies
+========================================
+========================================
+Step 1500 generation:
+Prompt: Once upon a time
+Generated: Once upon a time vows overth showcasing Clearly Conservative SC pa+- v Popstri
+uploadingPrefmark=%rapeutic Cree species moneynance radon weakassertTrue favorable eagleSpirit guaranteeing
+functionalities PURPOSEHistoric Philippines susceptible Cities promptediency CatholicismalidCurrent Hubtune Audio
+opportunistic rain Linear crit clade Palestinian etymology shred Sultan
+========================================
+```
+
+![50 extra 50k](assets/smolLM-5k-extra-50.png)
+![5000 training logs](assets/smolLM-5k-training-logs.png)
+
+## Logs after restarting training
+
+```
+Resolving data files: 100%
+ 104/104 [00:00<00:00, 60.07it/s]
+Resolving data files: 100%
+ 104/104 [00:00<00:00, 9738.95it/s]
+Loading model from checkpoint: /kaggle/input/smollm-checkpoint/best-checkpoint.ckpt
+wandb: WARNING Calling wandb.login() after wandb.init() has no effect.
+INFO: Using bfloat16 Automatic Mixed Precision (AMP)
+using device: cuda
+INFO: GPU available: True (cuda), used: True
+INFO: TPU available: False, using: 0 TPU cores
+INFO: HPU available: False, using: 0 HPUs
+/usr/local/lib/python3.10/dist-packages/pytorch_lightning/loggers/wandb.py:397: There is a wandb run already in progress and newly created instances of `WandbLogger` will reuse this run. If this is not desired, call `wandb.finish()` before instantiating `WandbLogger`.
+┏━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃   ┃ Name      ┃ Type             ┃ Params ┃ Mode  ┃
+┡━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ 0 │ model     │ SmolLM           │  135 M │ train │
+│ 1 │ criterion │ CrossEntropyLoss │      0 │ train │
+└───┴───────────┴──────────────────┴────────┴───────┘
+Trainable params: 135 M
+Non-trainable params: 0
+Total params: 135 M
+Total estimated model params size (MB): 540
+Modules in train mode: 398
+Modules in eval mode: 0
+Epoch 0/-2 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 50/-- 0:
+========================================
+Step 0 generation:
+Prompt: Once upon a time
+Generated: Once upon a time, in the complex 19, while the fascinating world.
+
+
+
+
+The the 102050s on the 1. We will be using the end of the United States to the world like the 1
+========================================
+========================================
+Step 10 generation:
+Prompt: Once upon a time
+Generated: Once upon a time, there was the fascinating a small, for their favorite book, a new the world, and the
+world, they would become a new world, and its life and their favorite stories, and the United States, and
+experiences, a different, and how
+========================================
+========================================
+Step 20 generation:
+Prompt: Once upon a time
+Generated: Once upon a time, in the realm of the importance of the end of the power of the 100193 for the 19, they
+have heard of a 185045.
+III. As the 16)
+========================================
+========================================
+Step 30 generation:
+Prompt: Once upon a time
+Generated: Once upon a time, there was the other. She was a something even a most to explore how this?
+
+One day, and her friends, and started the same, which had to help them and asked the day, sometimes, and knew, the
+6
+========================================
+========================================
+Step 40 generation:
+Prompt: Once upon a time
+Generated: Once upon a time, there was a story that a small, a little.
+
+
+
+Before diving into the context, and the best friends, he was more about the big, and asked her own body, she said,
+she was a time, and were
+========================================
+INFO: `Trainer.fit` stopped: `max_steps=50` reached.
+```
