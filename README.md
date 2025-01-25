@@ -1,8 +1,10 @@
 # [SmolLM](https://huggingface.co/HuggingFaceTB/SmolLM2-135M)
 
-# HuggingFace Model Card
+# Applications
 
-[SmolLM 135M](https://huggingface.co/spaces/nishantb06/SmolLMTextGenerator-5k)
+[SmolLM 135M HuggingFace Space](https://huggingface.co/spaces/nishantb06/SmolLMTextGenerator-5k)
+
+[Youtube video for custom frontend and backend application](https://youtu.be/_knMX2j6g6E)
 
 Reverse Engineering SmolLM 135M
 
