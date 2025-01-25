@@ -6,8 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the model and application files
-COPY model_weights.pt .
+# Copy only the python files
 COPY main.py .
 COPY smollm_training.py .
 

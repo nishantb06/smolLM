@@ -12,7 +12,7 @@ def load_model():
     model = SmolLM(config)
 
     try:
-        state_dict = torch.load("model_weights.pt", map_location="cpu")
+        state_dict = torch.load("/app/weights/model_weights.pt", map_location="cpu")
         model.load_state_dict(state_dict)
         model.eval()
         return model
@@ -21,7 +21,12 @@ def load_model():
         return None
 
 
-model = load_model()
+try:
+    model = load_model()
+    print("Model loaded successfully")
+except Exception as e:
+    print(f"Error loading model: {str(e)}")
+    model = None
 
 
 class GenerateRequest(BaseModel):
