@@ -12,7 +12,8 @@ Training it on the CosmoCorpus datasetf from scratch
 
 # Result :
 
-##**Got an exact parameter count match!!**
+### **Got an exact parameter count match!!**
+
 Original model : 134515008
 My model : 135104832
 The difference is due to the Rotary Positional Embeddings (which dont have any trainable parameters)

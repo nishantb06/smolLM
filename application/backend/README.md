@@ -1,6 +1,6 @@
-### Backend for serving the SmolLM model
+# Backend for serving the SmolLM model
 
-# sample curl request
+## sample curl request
 
 ```
 curl -X POST "http://localhost:8001/text/generate" \
