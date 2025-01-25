@@ -16,7 +16,7 @@ export function TextareaWithButton() {
   const handleGenerate = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://smollm-backend:8001/text/generate", {
+      const response = await fetch("/api/text/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

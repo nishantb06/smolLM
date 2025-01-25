@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  smollm-frontend:
+    build:
+      context: ./application/frontend/smollm-frontend
+    ports:
+      - "8000:3000"
+    networks:
+      - app-network
+
+  smollm-backend:
+    build:
+      context: ./application/backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./application/backend:/app/weights
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
