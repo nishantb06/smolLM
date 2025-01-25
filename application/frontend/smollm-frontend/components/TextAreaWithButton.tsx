@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
 
-// Create an interface for the response
+// Update the interface to match the actual API response
 interface GenerateResponse {
-  text: string;
+  output_text: string;  // Changed from 'text' to 'output_text'
 }
 
 export function TextareaWithButton() {
@@ -31,9 +31,9 @@ export function TextareaWithButton() {
 
       const data: GenerateResponse = await response.json();
       
-      // Dispatch a custom event with the generated text
+      // Update to use output_text instead of text
       const event = new CustomEvent("textGenerated", { 
-        detail: { text: data.text } 
+        detail: { text: data.output_text } 
       });
       window.dispatchEvent(event);
     } catch (error) {
