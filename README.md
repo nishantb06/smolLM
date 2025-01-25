@@ -1,16 +1,14 @@
 # [SmolLM](https://huggingface.co/HuggingFaceTB/SmolLM2-135M)
-
-# Applications
-
-[SmolLM 135M HuggingFace Space](https://huggingface.co/spaces/nishantb06/SmolLMTextGenerator-5k)
-
-[Youtube video for custom frontend and backend application](https://youtu.be/_knMX2j6g6E)
-
 Reverse Engineering SmolLM 135M
 
 Writing the model from scratch, by analysing its config and code.
 
 Training it on the CosmoCorpus datasetf from scratch
+# Demo's
+
+[SmolLM 135M HuggingFace Space](https://huggingface.co/spaces/nishantb06/SmolLMTextGenerator-5k)
+
+[Youtube video for custom frontend and backend application](https://youtu.be/_knMX2j6g6E)
 
 # Result :
 
