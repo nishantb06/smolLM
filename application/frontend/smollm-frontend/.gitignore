@@ -1,28 +1,3 @@
-*.pyc
-training.ipynb
-*.ipynb
-
-logs/*
-*.log
-*.txt
-*.csv
-*.json
-*.pth
-*.bin
-*.pt
-*.pkl
-*.joblib
-*.joblib
-
-*.ckpt
-*.pth
-*.bin
-*.pt
-*.pkl
-*.joblib
-*.joblib
-
-
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
