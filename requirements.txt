@@ -1,0 +1,10 @@
+torch
+gradio
+transformers
+pytorch-lightning 
+datasets
+wandb
+lightning
+fastapi
+uvicorn
+pydantic

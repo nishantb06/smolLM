@@ -4,7 +4,6 @@ training.ipynb
 
 logs/*
 *.log
-*.txt
 *.csv
 *.json
 *.pth
