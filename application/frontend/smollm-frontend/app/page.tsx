@@ -1,10 +1,10 @@
-import { Button } from "../components/ui/button"
+import { ButtonDemo } from "@/components/Button";
 
 export default function Home() {
   return (
     <main>
       <div>Hello world from smollm-frontend!</div>
-      <Button variant="outline">Button</Button>
+      <ButtonDemo />
     </main>
   );
 }
