@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 # overfit on one batch
-from model import SmolLM, SmolLMConfig
+from scripts.model import SmolLM, SmolLMConfig
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import GPT2Tokenizer
