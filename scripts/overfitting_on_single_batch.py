@@ -1,22 +1,13 @@
 import torch
 import torch.nn as nn
 # overfit on one batch
-from scripts.model import SmolLM, SmolLMConfig
+# from scripts.model import SmolLM, SmolLMConfig
+from scripts.model_mlha import SmolLM, SmolLMConfig
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import GPT2Tokenizer
 
 model = SmolLM(SmolLMConfig())
-
-dataset = load_dataset(
-    "HuggingFaceTB/smollm-corpus", "cosmopedia-v2", split="train", streaming=True
-)
-dataloader = DataLoader(dataset, batch_size=32)
-
-batch = next(iter(dataloader))
-
-batch.shape
-
 
 tokenizer = GPT2Tokenizer.from_pretrained("HuggingFaceTB/cosmo2-tokenizer")
 tokenizer.pad_token = tokenizer.eos_token
