@@ -17,6 +17,10 @@ class SmolLMConfig:
     n_key_value_heads = 3
     rms_norm_eps = 1e-5
     mlha_compression_ratio = 4
+    # MoE parameters
+    num_experts = 8
+    num_shared_experts = 1
+    top_k = 2
 
 
 ## Function which enables K and V to have less heads than Q. 
@@ -361,14 +365,21 @@ class DecoderBlockWithLayerNorm(nn.Module):
 
 
 class LlamaDecoderLayer(nn.Module):
-    def __init__(self, hidden_size, num_heads, intermediate_size, compression_ratio, num_experts, num_shared_experts, top_k) -> None:
+    def __init__(self, config: SmolLMConfig) -> None:
         super().__init__()
-        self.self_attn = MultiHeadLatentAttention(hidden_size, num_heads, compression_ratio)
-        self.input_layernorm = RMSNorm(hidden_size)
-        self.post_attention_layernorm = RMSNorm(hidden_size)
-        self.mlp = LlamaMLP(hidden_size, intermediate_size, num_experts, num_shared_experts, top_k)
+        self.config = config
+        self.self_attn = MultiHeadLatentAttention(config)
+        self.input_layernorm = RMSNorm(config.n_embed, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = RMSNorm(config.n_embed, eps=config.rms_norm_eps)
+        self.mlp = LlamaMLP(
+            hidden_size=config.n_embed,
+            intermediate_size=config.mlp_hidden_dim,
+            num_experts=config.num_experts,
+            num_shared_experts=config.num_shared_experts,
+            top_k=config.top_k
+        )
     
-    def forward(self, x, attention_mask = None):
+    def forward(self, x, attention_mask=None):
         residual = x
         x = self.self_attn(self.input_layernorm(x), attention_mask)
         x = x + residual
@@ -387,7 +398,7 @@ class SmolLM(nn.Module):
         self.wte = nn.Embedding(config.vocab_size, config.n_embed) # [vocab_size, n_embd]
         # self.wpe = nn.Embedding(config.block_size, config.n_embed) # [max_seq_len, n_embd]
         self.drop = nn.Dropout(config.dropout)
-        self.blocks = nn.ModuleList([DecoderBlockWithRMSNorm(config) for _ in range(config.n_layers)])
+        self.blocks = nn.ModuleList([LlamaDecoderLayer(config) for _ in range(config.n_layers)])
         self.rms_norm = RMSNorm(config.n_embed, eps=config.rms_norm_eps) # [n_embd]
         self.lm_head = nn.Linear(config.n_embed, config.vocab_size, bias=False) # [n_embd, vocab_size]
         
