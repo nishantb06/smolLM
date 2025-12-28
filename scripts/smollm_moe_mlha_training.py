@@ -1,5 +1,5 @@
 # import for  colab/kaggle
-# !pip install datasets transformers wandb -q
+# !pip install datasets transformers -q
 # !pip install pytorch-lightning lightning tiktoken -q
 import os
 import math
@@ -15,7 +15,7 @@ from transformers import GPT2Tokenizer
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, RichProgressBar
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import CSVLogger
 from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from pytorch_lightning.callbacks import ModelCheckpoint
 
@@ -573,12 +573,6 @@ class SmolLMMoEMLHALightning(pl.LightningModule):
             )
 
             print(message)
-
-            # Log to WandB
-            if hasattr(self.logger, "experiment"):
-                self.logger.experiment.log(
-                    {"generated_text": generated_text, "global_step": self.global_step}
-                )
         except Exception as e:
             print(f"Generation failed with error: {str(e)}")
 
@@ -663,11 +657,11 @@ if __name__ == "__main__":
     # Print model info
     print(f"Number of parameters: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
 
-    # WandB logger
-    wandb_logger = WandbLogger(
-        project="smollm-moe-mlha",
+    # Local CSV logger (logs saved to logs/ directory)
+    os.makedirs("logs", exist_ok=True)
+    csv_logger = CSVLogger(
+        save_dir="logs",
         name="moe_mlha_experiment",
-        log_model=True,
     )
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -716,7 +710,7 @@ if __name__ == "__main__":
         log_every_n_steps=1,
         enable_progress_bar=True,
         enable_model_summary=True,
-        logger=wandb_logger,
+        logger=csv_logger,
         accumulate_grad_batches=effective_batch_size // batch_size,
     )
 
